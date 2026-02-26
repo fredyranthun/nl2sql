@@ -29,11 +29,13 @@ pip install -e .
 python -m pg_nl2sql.cli --help
 pg-nl2sql --help
 pg-nl2sql --version
+pg-nl2sql config-check
 ```
 
 ## Current Status
 - Step 1 (Bootstrap repository): complete
-- Steps 2-11: planned
+- Step 2 (Configuration layer): complete
+- Steps 3-11: planned
 
 ## Planned Architecture
 ```text
@@ -51,13 +53,12 @@ User Question (NL)
 ```
 
 ## Development Roadmap
-1. Configuration layer
-2. PostgreSQL connection + healthcheck
-3. Schema introspection
-4. Local schema cache
-5. Retrieval heuristics
-6. Prompt builder
-7. LLM adapter
-8. SQL validator
-9. REPL
-10. Tests
+1. PostgreSQL connection + healthcheck
+2. Schema introspection
+3. Local schema cache
+4. Retrieval heuristics
+5. Prompt builder
+6. LLM adapter
+7. SQL validator
+8. REPL
+9. Tests
