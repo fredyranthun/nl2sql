@@ -1,0 +1,32 @@
+[build-system]
+requires = ["hatchling>=1.24.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pg-nl2sql"
+version = "0.1.0"
+description = "Safe PostgreSQL-focused CLI that converts natural language to SQL for review."
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+authors = [
+  { name = "pg-nl2sql contributors" },
+]
+dependencies = [
+  "psycopg[binary]>=3.2.0",
+  "sqlglot>=25.0.0",
+  "prompt_toolkit>=3.0.0",
+  "pydantic>=2.8.0",
+  "rich>=13.7.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0.0",
+]
+
+[project.scripts]
+pg-nl2sql = "pg_nl2sql.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/pg_nl2sql"]
