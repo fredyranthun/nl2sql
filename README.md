@@ -32,6 +32,8 @@ pg-nl2sql --version
 pg-nl2sql config-check
 pg-nl2sql healthcheck
 pg-nl2sql introspect-schema
+pg-nl2sql refresh-schema
+pg-nl2sql show-cache
 ```
 
 ## Current Status
@@ -39,7 +41,8 @@ pg-nl2sql introspect-schema
 - Step 2 (Configuration layer): complete
 - Step 3 (PostgreSQL connection + healthcheck): complete
 - Step 4 (Schema introspection): complete
-- Steps 5-11: planned
+- Step 5 (Local schema cache): complete
+- Steps 6-11: planned
 
 ## Planned Architecture
 ```text
@@ -57,10 +60,9 @@ User Question (NL)
 ```
 
 ## Development Roadmap
-1. Local schema cache
-2. Retrieval heuristics
-3. Prompt builder
-4. LLM adapter
-5. SQL validator
-6. REPL
-7. Tests
+1. Retrieval heuristics
+2. Prompt builder
+3. LLM adapter
+4. SQL validator
+5. REPL
+6. Tests

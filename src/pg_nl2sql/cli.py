@@ -41,7 +41,20 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Schema(s) to introspect. Repeat the flag to include multiple schemas.",
     )
-    subparsers.add_parser("refresh-schema", help="Reserved for Step 5.")
+    refresh_parser = subparsers.add_parser(
+        "refresh-schema",
+        help="Refresh local schema cache from PostgreSQL introspection.",
+    )
+    refresh_parser.add_argument(
+        "--schema",
+        action="append",
+        default=None,
+        help="Schema(s) to include in cache refresh. Repeat for multiple schemas.",
+    )
+    subparsers.add_parser(
+        "show-cache",
+        help="Show metadata from the local schema cache file.",
+    )
     subparsers.add_parser("repl", help="Reserved for Step 10.")
     return parser
 
@@ -146,6 +159,77 @@ def main(argv: list[str] | None = None) -> int:
         print(f"- database: {snapshot.database}")
         print(f"- schemas: {', '.join(sorted(snapshot.schemas.keys())) or '(none)'}")
         print(f"- tables_and_views: {snapshot.table_count}")
+        return 0
+
+    if args.command == "refresh-schema":
+        try:
+            from pg_nl2sql.config import ConfigError, load_settings
+            from pg_nl2sql.schema.cache import CacheError, refresh_schema_cache
+        except ModuleNotFoundError:
+            print(
+                "Runtime dependencies are missing. "
+                "Install project dependencies first (pip install -e .).",
+                file=sys.stderr,
+            )
+            return 2
+
+        try:
+            settings = load_settings()
+            cached = refresh_schema_cache(
+                postgres_dsn=settings.postgres_dsn,
+                cache_path=settings.schema_cache_path,
+                default_schema=settings.default_schema,
+                include_schemas=args.schema,
+            )
+        except ConfigError as exc:
+            print(f"Configuration error:\n{exc}", file=sys.stderr)
+            return 2
+        except CacheError as exc:
+            print(f"Schema cache refresh failed:\n{exc}", file=sys.stderr)
+            return 1
+
+        print("Schema cache refresh succeeded:")
+        print(f"- cache_path: {settings.schema_cache_path}")
+        print(f"- cache_format_version: {cached.cache_format_version}")
+        print(f"- generated_at: {cached.generated_at}")
+        print(f"- database: {cached.snapshot.database}")
+        print(
+            f"- schemas: {', '.join(sorted(cached.snapshot.schemas.keys())) or '(none)'}"
+        )
+        print(f"- tables_and_views: {cached.snapshot.table_count}")
+        return 0
+
+    if args.command == "show-cache":
+        try:
+            from pg_nl2sql.config import ConfigError, load_settings
+            from pg_nl2sql.schema.cache import CacheError, load_schema_cache
+        except ModuleNotFoundError:
+            print(
+                "Runtime dependencies are missing. "
+                "Install project dependencies first (pip install -e .).",
+                file=sys.stderr,
+            )
+            return 2
+
+        try:
+            settings = load_settings()
+            cached = load_schema_cache(settings.schema_cache_path)
+        except ConfigError as exc:
+            print(f"Configuration error:\n{exc}", file=sys.stderr)
+            return 2
+        except CacheError as exc:
+            print(f"Schema cache read failed:\n{exc}", file=sys.stderr)
+            return 1
+
+        print("Schema cache loaded:")
+        print(f"- cache_path: {settings.schema_cache_path}")
+        print(f"- cache_format_version: {cached.cache_format_version}")
+        print(f"- generated_at: {cached.generated_at}")
+        print(f"- database: {cached.snapshot.database}")
+        print(
+            f"- schemas: {', '.join(sorted(cached.snapshot.schemas.keys())) or '(none)'}"
+        )
+        print(f"- tables_and_views: {cached.snapshot.table_count}")
         return 0
 
     print(f"Command '{args.command}' is not implemented yet.")

@@ -6,3 +6,5 @@ dist/
 build/
 *.egg-info/
 .DS_Store
+data/
+data/schema_cache.json
