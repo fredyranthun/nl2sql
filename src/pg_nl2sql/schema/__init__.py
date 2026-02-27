@@ -8,6 +8,12 @@ from pg_nl2sql.schema.cache import (
     refresh_schema_cache,
     save_schema_cache,
 )
+from pg_nl2sql.schema.retrieval import (
+    RetrievalError,
+    RetrievalResult,
+    RetrievedTable,
+    retrieve_relevant_tables,
+)
 
 __all__ = [
     "CACHE_FORMAT_VERSION",
@@ -16,4 +22,8 @@ __all__ = [
     "load_schema_cache",
     "refresh_schema_cache",
     "save_schema_cache",
+    "RetrievalError",
+    "RetrievalResult",
+    "RetrievedTable",
+    "retrieve_relevant_tables",
 ]

@@ -34,6 +34,7 @@ pg-nl2sql healthcheck
 pg-nl2sql introspect-schema
 pg-nl2sql refresh-schema
 pg-nl2sql show-cache
+pg-nl2sql retrieve-tables "orders by status in the last 7 days"
 ```
 
 ## Current Status
@@ -42,7 +43,8 @@ pg-nl2sql show-cache
 - Step 3 (PostgreSQL connection + healthcheck): complete
 - Step 4 (Schema introspection): complete
 - Step 5 (Local schema cache): complete
-- Steps 6-11: planned
+- Step 6 (Retrieval heuristics): complete
+- Steps 7-11: planned
 
 ## Planned Architecture
 ```text
@@ -60,9 +62,8 @@ User Question (NL)
 ```
 
 ## Development Roadmap
-1. Retrieval heuristics
-2. Prompt builder
-3. LLM adapter
-4. SQL validator
-5. REPL
-6. Tests
+1. Prompt builder
+2. LLM adapter
+3. SQL validator
+4. REPL
+5. Tests
