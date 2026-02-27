@@ -35,6 +35,7 @@ pg-nl2sql introspect-schema
 pg-nl2sql refresh-schema
 pg-nl2sql show-cache
 pg-nl2sql retrieve-tables "orders by status in the last 7 days"
+pg-nl2sql build-prompt "orders by status in the last 7 days"
 ```
 
 ## Current Status
@@ -44,7 +45,8 @@ pg-nl2sql retrieve-tables "orders by status in the last 7 days"
 - Step 4 (Schema introspection): complete
 - Step 5 (Local schema cache): complete
 - Step 6 (Retrieval heuristics): complete
-- Steps 7-11: planned
+- Step 7 (Prompt builder): complete
+- Steps 8-11: planned
 
 ## Planned Architecture
 ```text
@@ -62,8 +64,7 @@ User Question (NL)
 ```
 
 ## Development Roadmap
-1. Prompt builder
-2. LLM adapter
-3. SQL validator
-4. REPL
-5. Tests
+1. LLM adapter
+2. SQL validator
+3. REPL
+4. Tests

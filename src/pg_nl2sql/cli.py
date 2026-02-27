@@ -66,6 +66,17 @@ def build_parser() -> argparse.ArgumentParser:
         default=6,
         help="Maximum number of tables to return (default: 6).",
     )
+    prompt_parser = subparsers.add_parser(
+        "build-prompt",
+        help="Build deterministic SQL-generation prompt from schema cache.",
+    )
+    prompt_parser.add_argument("question", help="Natural language question.")
+    prompt_parser.add_argument(
+        "--top-k",
+        type=int,
+        default=6,
+        help="Maximum number of relevant tables to include (default: 6).",
+    )
     subparsers.add_parser("repl", help="Reserved for Step 10.")
     return parser
 
@@ -284,6 +295,52 @@ def main(argv: list[str] | None = None) -> int:
             marker = " [fk-expanded]" if item.expanded_by_fk else ""
             print(f"- {item.fqn} score={item.score:.3f}{marker}")
             print(f"  reasons: {', '.join(item.reasons)}")
+        return 0
+
+    if args.command == "build-prompt":
+        try:
+            from pg_nl2sql.config import ConfigError, load_settings
+            from pg_nl2sql.prompts.sql_generation import (
+                PromptBuildError,
+                build_sql_generation_prompt,
+            )
+            from pg_nl2sql.schema.cache import CacheError, load_schema_cache
+        except ModuleNotFoundError:
+            print(
+                "Runtime dependencies are missing. "
+                "Install project dependencies first (pip install -e .).",
+                file=sys.stderr,
+            )
+            return 2
+
+        try:
+            settings = load_settings()
+            cached = load_schema_cache(settings.schema_cache_path)
+            bundle = build_sql_generation_prompt(
+                args.question,
+                cached.snapshot,
+                top_k=args.top_k,
+            )
+        except ConfigError as exc:
+            print(f"Configuration error:\n{exc}", file=sys.stderr)
+            return 2
+        except CacheError as exc:
+            print(f"Schema cache read failed:\n{exc}", file=sys.stderr)
+            return 1
+        except PromptBuildError as exc:
+            print(f"Prompt build failed:\n{exc}", file=sys.stderr)
+            return 1
+
+        print("Prompt build succeeded:")
+        print(f"- question: {bundle.question}")
+        print(
+            "- retrieved_tables: "
+            f"{', '.join(bundle.retrieved_tables) if bundle.retrieved_tables else '(none)'}"
+        )
+        print("\n--- SYSTEM PROMPT ---")
+        print(bundle.system_prompt)
+        print("\n--- USER PROMPT ---")
+        print(bundle.user_prompt)
         return 0
 
     print(f"Command '{args.command}' is not implemented yet.")
