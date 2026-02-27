@@ -31,6 +31,16 @@ def build_parser() -> argparse.ArgumentParser:
         "healthcheck",
         help="Check PostgreSQL connectivity with a read-only session.",
     )
+    introspect_parser = subparsers.add_parser(
+        "introspect-schema",
+        help="Inspect PostgreSQL schema metadata (Step 4).",
+    )
+    introspect_parser.add_argument(
+        "--schema",
+        action="append",
+        default=None,
+        help="Schema(s) to introspect. Repeat the flag to include multiple schemas.",
+    )
     subparsers.add_parser("refresh-schema", help="Reserved for Step 5.")
     subparsers.add_parser("repl", help="Reserved for Step 10.")
     return parser
@@ -104,6 +114,38 @@ def main(argv: list[str] | None = None) -> int:
         print(f"- user: {result.current_user}")
         print(f"- server_version: {result.server_version}")
         print(f"- transaction_read_only: {result.transaction_read_only}")
+        return 0
+
+    if args.command == "introspect-schema":
+        try:
+            from pg_nl2sql.config import ConfigError, load_settings
+            from pg_nl2sql.db.introspect import IntrospectionError, introspect_schema
+        except ModuleNotFoundError:
+            print(
+                "Runtime dependencies are missing. "
+                "Install project dependencies first (pip install -e .).",
+                file=sys.stderr,
+            )
+            return 2
+
+        try:
+            settings = load_settings()
+            snapshot = introspect_schema(
+                postgres_dsn=settings.postgres_dsn,
+                default_schema=settings.default_schema,
+                include_schemas=args.schema,
+            )
+        except ConfigError as exc:
+            print(f"Configuration error:\n{exc}", file=sys.stderr)
+            return 2
+        except IntrospectionError as exc:
+            print(f"Schema introspection failed:\n{exc}", file=sys.stderr)
+            return 1
+
+        print("Schema introspection succeeded:")
+        print(f"- database: {snapshot.database}")
+        print(f"- schemas: {', '.join(sorted(snapshot.schemas.keys())) or '(none)'}")
+        print(f"- tables_and_views: {snapshot.table_count}")
         return 0
 
     print(f"Command '{args.command}' is not implemented yet.")
