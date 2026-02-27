@@ -27,7 +27,10 @@ def build_parser() -> argparse.ArgumentParser:
         "config-check",
         help="Validate environment configuration for pg-nl2sql.",
     )
-    subparsers.add_parser("healthcheck", help="Reserved for Step 3.")
+    subparsers.add_parser(
+        "healthcheck",
+        help="Check PostgreSQL connectivity with a read-only session.",
+    )
     subparsers.add_parser("refresh-schema", help="Reserved for Step 5.")
     subparsers.add_parser("repl", help="Reserved for Step 10.")
     return parser
@@ -48,7 +51,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "config-check":
         try:
             from pg_nl2sql.config import ConfigError, load_settings
-        except ModuleNotFoundError as exc:
+        except ModuleNotFoundError:
             print(
                 "Configuration tooling dependencies are missing. "
                 "Install project dependencies first (pip install -e .).",
@@ -69,6 +72,38 @@ def main(argv: list[str] | None = None) -> int:
         print(f"- OPENAI_MODEL: {settings.openai_model}")
         print(f"- SCHEMA_CACHE_PATH: {settings.schema_cache_path}")
         print(f"- DEFAULT_SCHEMA: {settings.default_schema}")
+        return 0
+
+    if args.command == "healthcheck":
+        try:
+            from pg_nl2sql.config import ConfigError, load_settings
+            from pg_nl2sql.db.connection import (
+                DatabaseConnectionError,
+                check_postgres_health,
+            )
+        except ModuleNotFoundError:
+            print(
+                "Runtime dependencies are missing. "
+                "Install project dependencies first (pip install -e .).",
+                file=sys.stderr,
+            )
+            return 2
+
+        try:
+            settings = load_settings()
+            result = check_postgres_health(settings.postgres_dsn)
+        except ConfigError as exc:
+            print(f"Configuration error:\n{exc}", file=sys.stderr)
+            return 2
+        except DatabaseConnectionError as exc:
+            print(f"Healthcheck failed:\n{exc}", file=sys.stderr)
+            return 1
+
+        print("PostgreSQL healthcheck succeeded:")
+        print(f"- database: {result.current_database}")
+        print(f"- user: {result.current_user}")
+        print(f"- server_version: {result.server_version}")
+        print(f"- transaction_read_only: {result.transaction_read_only}")
         return 0
 
     print(f"Command '{args.command}' is not implemented yet.")

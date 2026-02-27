@@ -30,12 +30,14 @@ python -m pg_nl2sql.cli --help
 pg-nl2sql --help
 pg-nl2sql --version
 pg-nl2sql config-check
+pg-nl2sql healthcheck
 ```
 
 ## Current Status
 - Step 1 (Bootstrap repository): complete
 - Step 2 (Configuration layer): complete
-- Steps 3-11: planned
+- Step 3 (PostgreSQL connection + healthcheck): complete
+- Steps 4-11: planned
 
 ## Planned Architecture
 ```text
@@ -53,12 +55,11 @@ User Question (NL)
 ```
 
 ## Development Roadmap
-1. PostgreSQL connection + healthcheck
-2. Schema introspection
-3. Local schema cache
-4. Retrieval heuristics
-5. Prompt builder
-6. LLM adapter
-7. SQL validator
-8. REPL
-9. Tests
+1. Schema introspection
+2. Local schema cache
+3. Retrieval heuristics
+4. Prompt builder
+5. LLM adapter
+6. SQL validator
+7. REPL
+8. Tests
