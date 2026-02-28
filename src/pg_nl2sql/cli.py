@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 
 from pg_nl2sql import __version__
@@ -72,6 +73,17 @@ def build_parser() -> argparse.ArgumentParser:
     )
     prompt_parser.add_argument("question", help="Natural language question.")
     prompt_parser.add_argument(
+        "--top-k",
+        type=int,
+        default=6,
+        help="Maximum number of relevant tables to include (default: 6).",
+    )
+    generate_parser = subparsers.add_parser(
+        "generate-sql",
+        help="Generate structured SQL payload using configured LLM adapter.",
+    )
+    generate_parser.add_argument("question", help="Natural language question.")
+    generate_parser.add_argument(
         "--top-k",
         type=int,
         default=6,
@@ -341,6 +353,65 @@ def main(argv: list[str] | None = None) -> int:
         print(bundle.system_prompt)
         print("\n--- USER PROMPT ---")
         print(bundle.user_prompt)
+        return 0
+
+    if args.command == "generate-sql":
+        try:
+            from pg_nl2sql.config import ConfigError, load_settings
+            from pg_nl2sql.llm import LLMError, create_llm_generator
+            from pg_nl2sql.prompts.sql_generation import (
+                PromptBuildError,
+                build_sql_generation_prompt,
+            )
+            from pg_nl2sql.schema.cache import CacheError, load_schema_cache
+        except ModuleNotFoundError:
+            print(
+                "Runtime dependencies are missing. "
+                "Install project dependencies first (pip install -e .).",
+                file=sys.stderr,
+            )
+            return 2
+
+        try:
+            settings = load_settings()
+            settings.validate_llm_requirements()
+            cached = load_schema_cache(settings.schema_cache_path)
+            prompt_bundle = build_sql_generation_prompt(
+                args.question,
+                cached.snapshot,
+                top_k=args.top_k,
+            )
+            llm = create_llm_generator(settings)
+            result = llm.generate_sql(prompt_bundle)
+        except ConfigError as exc:
+            print(f"Configuration error:\n{exc}", file=sys.stderr)
+            return 2
+        except CacheError as exc:
+            print(f"Schema cache read failed:\n{exc}", file=sys.stderr)
+            return 1
+        except PromptBuildError as exc:
+            print(f"Prompt build failed:\n{exc}", file=sys.stderr)
+            return 1
+        except LLMError as exc:
+            print(f"SQL generation failed:\n{exc}", file=sys.stderr)
+            return 1
+
+        print("SQL generation succeeded:")
+        print(f"- confidence: {result.confidence:.3f}")
+        print(
+            "- tables_used: "
+            f"{', '.join(result.tables_used) if result.tables_used else '(none)'}"
+        )
+        print("- assumptions:")
+        if result.assumptions:
+            for assumption in result.assumptions:
+                print(f"  - {assumption}")
+        else:
+            print("  - (none)")
+        print("\nSQL:")
+        print(result.sql)
+        print("\nJSON payload:")
+        print(json.dumps(result.model_dump(), indent=2, sort_keys=True))
         return 0
 
     print(f"Command '{args.command}' is not implemented yet.")
