@@ -89,6 +89,20 @@ def build_parser() -> argparse.ArgumentParser:
         default=6,
         help="Maximum number of relevant tables to include (default: 6).",
     )
+    validate_parser = subparsers.add_parser(
+        "validate-sql",
+        help="Validate a SQL statement against safety and schema allowlist rules.",
+    )
+    validate_parser.add_argument("sql", help="SQL statement to validate.")
+    validate_parser.add_argument(
+        "--allow-table",
+        action="append",
+        default=None,
+        help=(
+            "Restrict SQL usage to fully-qualified table(s), "
+            "for example --allow-table public.orders."
+        ),
+    )
     subparsers.add_parser("repl", help="Reserved for Step 10.")
     return parser
 
@@ -364,6 +378,7 @@ def main(argv: list[str] | None = None) -> int:
                 build_sql_generation_prompt,
             )
             from pg_nl2sql.schema.cache import CacheError, load_schema_cache
+            from pg_nl2sql.sql.validator import SQLValidationError, ensure_valid_sql
         except ModuleNotFoundError:
             print(
                 "Runtime dependencies are missing. "
@@ -383,6 +398,15 @@ def main(argv: list[str] | None = None) -> int:
             )
             llm = create_llm_generator(settings)
             result = llm.generate_sql(prompt_bundle)
+            validation = ensure_valid_sql(
+                result.sql,
+                cached.snapshot,
+                allowed_tables=prompt_bundle.retrieved_tables,
+                default_schema=settings.default_schema,
+            )
+            result.sql = validation.normalized_sql
+            if not result.tables_used:
+                result.tables_used = validation.tables_used
         except ConfigError as exc:
             print(f"Configuration error:\n{exc}", file=sys.stderr)
             return 2
@@ -394,6 +418,9 @@ def main(argv: list[str] | None = None) -> int:
             return 1
         except LLMError as exc:
             print(f"SQL generation failed:\n{exc}", file=sys.stderr)
+            return 1
+        except SQLValidationError as exc:
+            print(f"Generated SQL failed validation:\n{exc}", file=sys.stderr)
             return 1
 
         print("SQL generation succeeded:")
@@ -412,6 +439,55 @@ def main(argv: list[str] | None = None) -> int:
         print(result.sql)
         print("\nJSON payload:")
         print(json.dumps(result.model_dump(), indent=2, sort_keys=True))
+        return 0
+
+    if args.command == "validate-sql":
+        try:
+            from pg_nl2sql.config import ConfigError, load_settings
+            from pg_nl2sql.schema.cache import CacheError, load_schema_cache
+            from pg_nl2sql.sql.validator import validate_sql
+        except ModuleNotFoundError:
+            print(
+                "Runtime dependencies are missing. "
+                "Install project dependencies first (pip install -e .).",
+                file=sys.stderr,
+            )
+            return 2
+
+        try:
+            settings = load_settings()
+            cached = load_schema_cache(settings.schema_cache_path)
+            validation = validate_sql(
+                args.sql,
+                cached.snapshot,
+                allowed_tables=args.allow_table,
+                default_schema=settings.default_schema,
+            )
+        except ConfigError as exc:
+            print(f"Configuration error:\n{exc}", file=sys.stderr)
+            return 2
+        except CacheError as exc:
+            print(f"Schema cache read failed:\n{exc}", file=sys.stderr)
+            return 1
+
+        if not validation.is_valid:
+            print("SQL validation failed:")
+            for violation in validation.violations:
+                print(f"- {violation}")
+            return 1
+
+        print("SQL validation succeeded:")
+        print(
+            "- tables_used: "
+            f"{', '.join(validation.tables_used) if validation.tables_used else '(none)'}"
+        )
+        print(
+            "- columns_used: "
+            f"{', '.join(validation.columns_used) if validation.columns_used else '(none)'}"
+        )
+        print(f"- limit_added: {'yes' if validation.limit_added else 'no'}")
+        print("\nNormalized SQL:")
+        print(validation.normalized_sql)
         return 0
 
     print(f"Command '{args.command}' is not implemented yet.")

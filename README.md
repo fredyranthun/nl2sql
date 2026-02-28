@@ -37,6 +37,7 @@ pg-nl2sql show-cache
 pg-nl2sql retrieve-tables "orders by status in the last 7 days"
 pg-nl2sql build-prompt "orders by status in the last 7 days"
 pg-nl2sql generate-sql "orders by status in the last 7 days"
+pg-nl2sql validate-sql "SELECT id, status FROM public.orders"
 ```
 
 ## Current Status
@@ -48,7 +49,8 @@ pg-nl2sql generate-sql "orders by status in the last 7 days"
 - Step 6 (Retrieval heuristics): complete
 - Step 7 (Prompt builder): complete
 - Step 8 (LLM adapter): complete
-- Steps 9-11: planned
+- Step 9 (SQL validation): complete
+- Steps 10-11: planned
 
 ## Planned Architecture
 ```text
@@ -66,6 +68,5 @@ User Question (NL)
 ```
 
 ## Development Roadmap
-1. SQL validator
-2. REPL
-3. Tests
+1. REPL
+2. Tests
